@@ -1,0 +1,22 @@
+[project]
+name = "mayvary"
+version = "0.0.1"
+description = "Run the same queries on Oracle and Postgres and show where the answers differ."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+  "sqlglot>=30.29",
+  "oracledb>=26.1",
+  "psycopg[binary]>=3.3",
+]
+
+[project.scripts]
+mayvary = "mayvary.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

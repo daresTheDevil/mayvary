@@ -1,0 +1,35 @@
+name: mayvary-demo
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    environment:
+      ORACLE_PASSWORD: mayvary
+      APP_USER: mayvary
+      APP_USER_PASSWORD: mayvary
+    ports:
+      - "11521:1521"
+    volumes:
+      - ./oracle:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: mayvary
+      POSTGRES_PASSWORD: mayvary
+      POSTGRES_DB: mayvary
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "mayvary", "-d", "mayvary"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

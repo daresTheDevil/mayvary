@@ -1,0 +1,59 @@
+# Same data on both sides. Every Postgres query here comes from sqlglot.
+# Four of these should come back the same. The rest shouldn't.
+
+[[case]]
+name = "customer-count"
+oracle = "SELECT COUNT(*) AS n FROM customers"
+
+[[case]]
+name = "open-orders"
+oracle = """
+SELECT o.id, c.first_name
+FROM orders o JOIN customers c ON c.id = o.customer_id
+WHERE o.status = 'OPEN'
+ORDER BY o.id
+"""
+
+[[case]]
+name = "active-customers"
+oracle = "SELECT id FROM customers WHERE status = 'ACTIVE' ORDER BY id"
+
+[[case]]
+name = "spend-per-customer"
+oracle = """
+SELECT customer_id, SUM(total) AS spent
+FROM orders
+GROUP BY customer_id
+ORDER BY customer_id
+"""
+
+# Oracle: TRIM(' ') is '', and '' is NULL.
+[[case]]
+name = "blank-middle-names"
+oracle = "SELECT id FROM customers WHERE TRIM(middle_name) IS NULL ORDER BY id"
+
+# Oracle: NVL(x, '') is NVL(x, NULL), so it changes nothing.
+[[case]]
+name = "middle-name-or-empty"
+oracle = "SELECT id, NVL(middle_name, '') AS middle FROM customers ORDER BY id"
+
+# Oracle keeps CHAR padding through ||. Postgres drops it on the cast to text.
+[[case]]
+name = "status-label"
+oracle = "SELECT id, status || '|' AS label FROM customers ORDER BY id"
+
+# Customers with their open order, or NULL if they have none.
+[[case]]
+name = "customers-with-open-orders"
+oracle = """
+SELECT c.id, o.id AS order_id
+FROM customers c, orders o
+WHERE c.id = o.customer_id(+)
+  AND o.status(+) = 'OPEN'
+ORDER BY c.id
+"""
+
+# Oracle treats position 0 as 1.
+[[case]]
+name = "sku-prefix"
+oracle = "SELECT id, SUBSTR(sku, 0, 3) AS prefix FROM orders ORDER BY id"
