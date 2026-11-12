@@ -1,0 +1,25 @@
+# The fix each cause in cases.toml suggests. All of these should come back the same.
+
+[[case]]
+name = "blank-middle-names-fixed"
+oracle = "SELECT id FROM customers WHERE TRIM(middle_name) IS NULL ORDER BY id"
+postgres = "SELECT id FROM customers WHERE NULLIF(TRIM(middle_name), '') IS NULL ORDER BY id"
+
+[[case]]
+name = "middle-name-or-empty-fixed"
+oracle = "SELECT id, NVL(middle_name, '') AS middle FROM customers ORDER BY id"
+postgres = "SELECT id, NULLIF(COALESCE(middle_name, ''), '') AS middle FROM customers ORDER BY id"
+
+[[case]]
+name = "status-label-fixed"
+oracle = "SELECT id, status || '|' AS label FROM customers ORDER BY id"
+postgres = "SELECT id, rpad(status, 10) || '|' AS label FROM customers ORDER BY id"
+
+[[case]]
+name = "customers-with-open-orders-fixed"
+oracle = "SELECT c.id, o.id AS order_id FROM customers c, orders o WHERE c.id = o.customer_id(+) AND o.status(+) = 'OPEN' ORDER BY c.id"
+postgres = "SELECT c.id, o.id AS order_id FROM customers c LEFT JOIN orders o ON c.id = o.customer_id AND o.status = 'OPEN' ORDER BY c.id"
+
+[[case]]
+name = "sku-prefix-fixed"
+oracle = "SELECT id, SUBSTR(sku, 1, 3) AS prefix FROM orders ORDER BY id"

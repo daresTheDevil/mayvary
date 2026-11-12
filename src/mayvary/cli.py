@@ -8,6 +8,7 @@ import psycopg
 
 from mayvary.cases import Case, load_cases
 from mayvary.compare import Outcome, Verdict, compare
+from mayvary.explain import Explanation, explain
 from mayvary.run import (
     Limits,
     connect_oracle,
@@ -27,6 +28,7 @@ class Checked:
     translated: bool
     warnings: list[str]
     verdict: Verdict
+    explanations: list[Explanation]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,11 +75,13 @@ def check(case: Case, ora, pg, limits: Limits) -> Checked:
         postgres_result = fetch_postgres(pg, postgres_sql, limits)
     except psycopg.Error as error:
         verdict = Verdict(Outcome.POSTGRES_ERROR, note=str(error).strip())
-        return Checked(case, postgres_sql, translated, warnings, verdict)
+        return Checked(case, postgres_sql, translated, warnings, verdict, [])
 
     ordered = has_top_level_order_by(case.oracle)
     verdict = compare(oracle_result, postgres_result, ordered)
-    return Checked(case, postgres_sql, translated, warnings, verdict)
+    columns = tuple(name.lower() for name in oracle_result.columns)
+    explanations = explain(case.oracle, columns, verdict.only_oracle, verdict.only_postgres)
+    return Checked(case, postgres_sql, translated, warnings, verdict, explanations)
 
 
 def print_checked(item: Checked) -> None:
@@ -90,10 +94,25 @@ def print_checked(item: Checked) -> None:
         print(f"    sqlglot warned: {warning}")
     if verdict.note:
         print(f"    {verdict.note}")
+    print_explanations(item)
     print_rows("only in Oracle", verdict.only_oracle)
     print_rows("only in Postgres", verdict.only_postgres)
     print(f"    postgres sql: {item.postgres_sql}")
     print()
+
+
+def print_explanations(item: Checked) -> None:
+    if item.verdict.outcome is not Outcome.DIFFERENT:
+        return
+    if not item.explanations:
+        print("    cause: unexplained")
+        return
+    for e in item.explanations:
+        print(f"    cause: {e.title} ({e.confidence}, rule {e.rule})")
+        print(f"      seen: {e.evidence}")
+        print(f"      fix:  {e.fix}")
+        for source in e.sources:
+            print(f"      see:  {source}")
 
 
 def print_rows(label: str, rows: list[tuple]) -> None:
@@ -113,6 +132,10 @@ def format_row(row: tuple) -> str:
 def print_summary(checked: list[Checked]) -> None:
     counts = {o: sum(c.verdict.outcome is o for c in checked) for o in Outcome}
     parts = [f"{n} {o.value.lower()}" for o, n in counts.items() if n]
+    different = [c for c in checked if c.verdict.outcome is Outcome.DIFFERENT]
+    if different:
+        explained = sum(bool(c.explanations) for c in different)
+        parts.append(f"{explained} of {len(different)} differences explained")
     print(f"{len(checked)} cases: " + ", ".join(parts))
 
 

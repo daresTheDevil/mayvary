@@ -53,6 +53,11 @@ WHERE c.id = o.customer_id(+)
 ORDER BY c.id
 """
 
+# Oracle counts CHAR padding in LENGTH. No rule covers this yet.
+[[case]]
+name = "status-length"
+oracle = "SELECT id, LENGTH(status) AS n FROM customers ORDER BY id"
+
 # Oracle treats position 0 as 1.
 [[case]]
 name = "sku-prefix"
